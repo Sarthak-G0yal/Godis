@@ -29,19 +29,19 @@ func TestIntegerBool(t *testing.T) {
 	}
 }
 
-func TestBlukString(t *testing.T) {
-	result := BlukString("hello")
+func TestBulkString(t *testing.T) {
+	result := BulkString("hello")
 	expected := "$5\r\nhello\r\n"
 	if result != expected {
-		t.Errorf("BlukString(\"hello\") = %q; want %q", result, expected)
+		t.Errorf("BulkString(\"hello\") = %q; want %q", result, expected)
 	}
 }
 
-func TestNullBulkString(t *testing.T) {
-	result := NullBulkString()
+func TestNilBulkString(t *testing.T) {
+	result := NilBulkString()
 	expected := "$-1\r\n"
 	if result != expected {
-		t.Fatalf("NullBulkString() = %q; want %q", result, expected)
+		t.Fatalf("NilBulkString() = %q; want %q", result, expected)
 	}
 }
 
