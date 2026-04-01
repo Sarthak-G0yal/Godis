@@ -7,12 +7,17 @@ import (
 	"mini-redis/internal/storage"
 )
 
-type Executor struct {
-	store storage.Storage
+type CommandAppender interface {
+	Append(cmd protocol.Command) error
 }
 
-func NewExecutor(store storage.Storage) *Executor {
-	return &Executor{store: store}
+type Executor struct {
+	store    storage.Storage
+	appender CommandAppender
+}
+
+func NewExecutor(store storage.Storage, appender CommandAppender) *Executor {
+	return &Executor{store: store, appender: appender}
 }
 
 func (e *Executor) Execute(cmd protocol.Command) string {
@@ -30,6 +35,9 @@ func (e *Executor) Execute(cmd protocol.Command) string {
 		value := cmd.Args[1]
 		if err := e.store.Set(key, value); err != nil {
 			return protocol.Error(mapStorageError(err))
+		}
+		if err := e.appendWrite(cmd); err != nil {
+			return protocol.Error("persistence append failed")
 		}
 		return protocol.OK()
 	case protocol.CmdGet:
@@ -56,6 +64,9 @@ func (e *Executor) Execute(cmd protocol.Command) string {
 			}
 			return protocol.Error(mapStorageError(err))
 		}
+		if err := e.appendWrite(cmd); err != nil {
+			return protocol.Error("persistence append failed")
+		}
 		return protocol.Integer(1)
 	case protocol.CmdExists:
 		if err := expectArgs(cmd, 1); err != nil {
@@ -66,6 +77,13 @@ func (e *Executor) Execute(cmd protocol.Command) string {
 	default:
 		return protocol.Error("unknown command")
 	}
+}
+
+func (e *Executor) appendWrite(cmd protocol.Command) error {
+	if e.appender == nil || !cmd.IsWrite() {
+		return nil
+	}
+	return e.appender.Append(cmd)
 }
 
 func expectArgs(cmd protocol.Command, want int) error {

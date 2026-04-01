@@ -9,8 +9,8 @@ The codebase is built in phases with clear package boundaries between protocol, 
 - Phase 1: done (project structure + core interfaces)
 - Phase 2: done (thread-safe in-memory storage)
 - Phase 3: done (TCP server bootstrap + parser + executor + unit tests)
-- Phase 4: next (append-only file persistence)
-- Phase 5: pending (integration tests + hardening)
+- Phase 4: done (append-only file persistence + replay)
+- Phase 5: next (integration tests + hardening)
 
 ## Implemented Features
 
@@ -19,8 +19,11 @@ The codebase is built in phases with clear package boundaries between protocol, 
 - In-memory key/value store with `sync.RWMutex`
 - Line-based command parsing and validation
 - Protocol response helpers (`+`, `-ERR`, `:`, `$`, `$-1`)
+- Append-only file (AOF) persistence for successful `SET`/`DEL`
+- Replay on startup before accepting traffic
+- Periodic AOF sync using configurable interval
 - Graceful shutdown on `SIGINT` / `SIGTERM`
-- Unit tests for storage, protocol, and executor behavior
+- Unit tests for storage, protocol, executor, and AOF behavior
 
 ## Architecture
 
@@ -71,11 +74,26 @@ Files:
 - `cmd/server/main.go`
 
 Flow:
-1. `main` builds config, storage, and server.
-2. `Server.Start()` listens on TCP and accepts clients.
-3. Each client connection runs in its own goroutine.
-4. Incoming line is parsed, executed, and response is written back.
-5. Shutdown closes listener, active connections, and waits for goroutines.
+1. `main` builds config, storage, and AOF.
+2. Existing AOF entries are replayed into storage.
+3. Server is created with an append hook injected into the executor.
+4. `Server.Start()` listens on TCP and accepts clients.
+5. Each client connection runs in its own goroutine.
+6. Incoming line is parsed, executed, and response is written back.
+7. Shutdown closes listener, active connections, waits for goroutines, and closes AOF.
+
+### 5) Persistence (AOF)
+
+Files:
+- `internal/persistence/aof.go`
+- `internal/persistence/aof_test.go`
+
+Behavior:
+- Appends one successful write command per line (`SET`, `DEL`).
+- Skips malformed replay lines with warning logs (startup continues).
+- Replays only write commands into storage.
+- Performs periodic `Sync()` based on `AOFSyncInterval`.
+- Final `Sync()` and file close are done during shutdown.
 
 ## Command Behavior (v1)
 
@@ -95,7 +113,9 @@ Flow:
 ├── internal/
 │   ├── config/
 │   │   └── config.go
-│   ├── persistence/            # Phase 4 target
+│   ├── persistence/
+│   │   ├── aof.go
+│   │   └── aof_test.go
 │   ├── protocol/
 │   │   ├── command.go
 │   │   ├── parser.go
@@ -135,16 +155,23 @@ DEL lang
 GET lang
 ```
 
-## Phase 4 Plan (Next)
+After restarting the server, `GET lang` should return `$-1\r\n` because the key was deleted and that delete was persisted.
 
-Goal: persist writes and recover state on restart.
+To verify persistence recovery, restart after a write without deleting:
 
-Planned in `internal/persistence/aof.go`:
-- Open append-only file (`appendonly.aof`)
-- Append successful mutating commands (`SET`, `DEL`)
-- Periodically `Sync()` based on `AOFSyncInterval`
-- Replay file on startup before accepting client traffic
-- Ensure replay does not re-append commands
+```bash
+nc localhost 6379
+SET boot persisted
+```
+
+Then restart server and run:
+
+```bash
+nc localhost 6379
+GET boot
+```
+
+Expected response contains `persisted`.
 
 ## Notes
 

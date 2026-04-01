@@ -27,9 +27,13 @@ type Server struct {
 }
 
 func New(addr string, store storage.Storage) *Server {
+	return NewWithAppender(addr, store, nil)
+}
+
+func NewWithAppender(addr string, store storage.Storage, appender CommandAppender) *Server {
 	return &Server{
 		addr:  addr,
-		exec:  NewExecutor(store),
+		exec:  NewExecutor(store, appender),
 		conns: make(map[net.Conn]struct{}),
 	}
 }

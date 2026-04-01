@@ -1,14 +1,28 @@
 package server
 
 import (
+	"errors"
 	"testing"
 
 	"mini-redis/internal/protocol"
 	"mini-redis/internal/storage"
 )
 
+type mockAppender struct {
+	commands []protocol.Command
+	err      error
+}
+
+func (m *mockAppender) Append(cmd protocol.Command) error {
+	m.commands = append(m.commands, cmd)
+	if m.err != nil {
+		return m.err
+	}
+	return nil
+}
+
 func TestExecutorPing(t *testing.T) {
-	exec := NewExecutor(storage.NewMemoryStorage())
+	exec := NewExecutor(storage.NewMemoryStorage(), nil)
 
 	got := exec.Execute(protocol.Command{Name: protocol.CmdPing})
 	want := "+PONG\r\n"
@@ -18,7 +32,7 @@ func TestExecutorPing(t *testing.T) {
 }
 
 func TestExecutorSetAndGetHit(t *testing.T) {
-	exec := NewExecutor(storage.NewMemoryStorage())
+	exec := NewExecutor(storage.NewMemoryStorage(), nil)
 
 	setResp := exec.Execute(protocol.Command{Name: protocol.CmdSet, Args: []string{"name", "mini-redis"}})
 	if setResp != "+OK\r\n" {
@@ -32,7 +46,7 @@ func TestExecutorSetAndGetHit(t *testing.T) {
 }
 
 func TestExecutorGetMiss(t *testing.T) {
-	exec := NewExecutor(storage.NewMemoryStorage())
+	exec := NewExecutor(storage.NewMemoryStorage(), nil)
 
 	got := exec.Execute(protocol.Command{Name: protocol.CmdGet, Args: []string{"missing"}})
 	want := "$-1\r\n"
@@ -42,7 +56,7 @@ func TestExecutorGetMiss(t *testing.T) {
 }
 
 func TestExecutorDelHitAndMiss(t *testing.T) {
-	exec := NewExecutor(storage.NewMemoryStorage())
+	exec := NewExecutor(storage.NewMemoryStorage(), nil)
 
 	_ = exec.Execute(protocol.Command{Name: protocol.CmdSet, Args: []string{"k1", "v1"}})
 
@@ -58,7 +72,7 @@ func TestExecutorDelHitAndMiss(t *testing.T) {
 }
 
 func TestExecutorExists(t *testing.T) {
-	exec := NewExecutor(storage.NewMemoryStorage())
+	exec := NewExecutor(storage.NewMemoryStorage(), nil)
 
 	_ = exec.Execute(protocol.Command{Name: protocol.CmdSet, Args: []string{"feature", "on"}})
 
@@ -74,7 +88,7 @@ func TestExecutorExists(t *testing.T) {
 }
 
 func TestExecutorBadArity(t *testing.T) {
-	exec := NewExecutor(storage.NewMemoryStorage())
+	exec := NewExecutor(storage.NewMemoryStorage(), nil)
 
 	cases := []protocol.Command{
 		{Name: protocol.CmdPing, Args: []string{"extra"}},
@@ -89,5 +103,36 @@ func TestExecutorBadArity(t *testing.T) {
 		if len(got) == 0 || got[:5] != "-ERR " {
 			t.Fatalf("expected error response for %#v, got %q", cmd, got)
 		}
+	}
+}
+
+func TestExecutorAppendHookOnlySuccessfulWrites(t *testing.T) {
+	appender := &mockAppender{}
+	exec := NewExecutor(storage.NewMemoryStorage(), appender)
+
+	_ = exec.Execute(protocol.Command{Name: protocol.CmdPing})
+	_ = exec.Execute(protocol.Command{Name: protocol.CmdSet, Args: []string{"k1", "v1"}, Raw: "SET k1 v1"})
+	_ = exec.Execute(protocol.Command{Name: protocol.CmdDel, Args: []string{"missing"}, Raw: "DEL missing"})
+	_ = exec.Execute(protocol.Command{Name: protocol.CmdDel, Args: []string{"k1"}, Raw: "DEL k1"})
+
+	if len(appender.commands) != 2 {
+		t.Fatalf("append count = %d, want %d", len(appender.commands), 2)
+	}
+	if appender.commands[0].Name != protocol.CmdSet {
+		t.Fatalf("first append command = %s, want %s", appender.commands[0].Name, protocol.CmdSet)
+	}
+	if appender.commands[1].Name != protocol.CmdDel {
+		t.Fatalf("second append command = %s, want %s", appender.commands[1].Name, protocol.CmdDel)
+	}
+}
+
+func TestExecutorAppendHookFailureReturnsError(t *testing.T) {
+	appender := &mockAppender{err: errors.New("disk full")}
+	exec := NewExecutor(storage.NewMemoryStorage(), appender)
+
+	got := exec.Execute(protocol.Command{Name: protocol.CmdSet, Args: []string{"k1", "v1"}, Raw: "SET k1 v1"})
+	want := "-ERR persistence append failed\r\n"
+	if got != want {
+		t.Fatalf("response = %q, want %q", got, want)
 	}
 }
