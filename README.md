@@ -20,7 +20,7 @@ Godis is designed to be simple enough to understand end-to-end, while still incl
 - Phase 5: planned (integration tests + hardening)
 
 Detailed technical notes: [ARCHITECTURE.md](ARCHITECTURE.md)
-Future roadmap and Phase 5 plan: [FutureScope.md](FutureScope.md)
+Future roadmap and Phase 5 plan: [ignore.md](ignore.md)
 
 ## Features
 
@@ -50,7 +50,7 @@ Future roadmap and Phase 5 plan: [FutureScope.md](FutureScope.md)
 │   ├── uv.lock
 │   └── modules/
 ├── ARCHITECTURE.md
-├── FutureScope.md
+├── ignore.md
 └── README.md
 ```
 
@@ -121,6 +121,16 @@ docker compose up --build
 Open:
 - Godis UI: `http://localhost:8501`
 
+Compose networking behavior:
+- `godis-ui` is publicly published on `8501`.
+- `godis` is internal-only (`expose: 6379`) on the Docker network.
+- `godis-ui` reaches `godis` using service DNS name `godis`.
+
+Optional Compose environment overrides:
+- `UI_BIND_HOST` (default: `0.0.0.0`)
+- `UI_PORT` (default: `8501`)
+- `GODIS_CPUS`, `GODIS_MEM`, `GODIS_UI_CPUS`, `GODIS_UI_MEM`
+
 Stop compose:
 
 ```bash
@@ -136,7 +146,7 @@ go test -race ./...
 
 ## Quick Usage
 
-In a second terminal:
+For local backend run (`go run ./cmd/server`) in a second terminal:
 
 ```bash
 nc localhost 6379
