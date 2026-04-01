@@ -1,0 +1,12 @@
+.git
+.gitignore
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+appendonly.aof
+
+**/*_test.go
+ARCHITECTURE.md
+ignore.md

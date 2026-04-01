@@ -1,0 +1,14 @@
+services:
+  godis:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: godis
+    ports:
+      - "6379:6379"
+    volumes:
+      - godis-data:/data
+    restart: unless-stopped
+
+volumes:
+  godis-data:

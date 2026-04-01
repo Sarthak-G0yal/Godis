@@ -64,6 +64,39 @@ Server defaults:
 - AOF file: `appendonly.aof`
 - sync interval: `1s`
 
+## Run With Docker
+
+Build image:
+
+```bash
+docker build -t godis:latest .
+```
+
+Run container:
+
+```bash
+docker run --name godis \
+	-p 6379:6379 \
+	-v godis-data:/data \
+	godis:latest
+```
+
+Notes:
+- The container runs with working directory `/data`, so `appendonly.aof` is written there by default.
+- The named volume `godis-data` keeps data across container restarts.
+
+Run with Docker Compose:
+
+```bash
+docker compose up --build
+```
+
+Stop compose:
+
+```bash
+docker compose down
+```
+
 ## Test
 
 ```bash
@@ -91,10 +124,3 @@ A simple web frontend will be added so people can interact with Godis online.
 
 Live frontend link:
 - https://your-frontend-link.example
-
-## Next Steps
-
-Phase 5 focuses on:
-- integration tests for real TCP flows
-- hardening for input limits, timeouts, and shutdown safety
-- stronger persistence correctness guarantees
