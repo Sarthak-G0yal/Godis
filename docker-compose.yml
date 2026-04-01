@@ -10,5 +10,19 @@ services:
       - godis-data:/data
     restart: unless-stopped
 
+  godis-ui:
+    build:
+      context: ./web-ui
+      dockerfile: Dockerfile
+    container_name: godis-ui
+    ports:
+      - "8501:8501"
+    environment:
+      GODIS_HOST: godis
+      GODIS_PORT: "6379"
+    depends_on:
+      - godis
+    restart: unless-stopped
+
 volumes:
   godis-data:

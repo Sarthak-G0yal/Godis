@@ -44,6 +44,11 @@ Future roadmap and Phase 5 plan: [FutureScope.md](FutureScope.md)
 │   ├── protocol/
 │   ├── server/
 │   └── storage/
+├── web-ui/
+│   ├── app.py
+│   ├── pyproject.toml
+│   ├── uv.lock
+│   └── modules/
 ├── ARCHITECTURE.md
 ├── FutureScope.md
 └── README.md
@@ -52,6 +57,8 @@ Future roadmap and Phase 5 plan: [FutureScope.md](FutureScope.md)
 ## Prerequisites
 
 - Go 1.26+
+- Python 3.11+
+- `uv`
 
 ## Run Locally
 
@@ -63,6 +70,26 @@ Server defaults:
 - address: `:6379`
 - AOF file: `appendonly.aof`
 - sync interval: `1s`
+
+## Run Frontend Locally (uv)
+
+In another terminal:
+
+```bash
+cd web-ui
+uv sync
+GODIS_HOST=localhost GODIS_PORT=6379 uv run streamlit run app.py
+```
+
+Open `http://localhost:8501`.
+
+The frontend auto-configures the server target from environment variables:
+- `GODIS_HOST` (default: `godis`)
+- `GODIS_PORT` (default: `6379`)
+
+Important:
+- Start the UI with `uv run streamlit run app.py`.
+- Do not run `uv run python app.py` directly.
 
 ## Run With Docker
 
@@ -85,11 +112,14 @@ Notes:
 - The container runs with working directory `/data`, so `appendonly.aof` is written there by default.
 - The named volume `godis-data` keeps data across container restarts.
 
-Run with Docker Compose:
+Run full stack with Docker Compose (backend + frontend):
 
 ```bash
 docker compose up --build
 ```
+
+Open:
+- Godis UI: `http://localhost:8501`
 
 Stop compose:
 
@@ -120,7 +150,7 @@ GET lang
 
 ## Frontend (Online Interaction)
 
-A simple web frontend will be added so people can interact with Godis online.
+Godis now includes a Streamlit frontend in `web-ui` for local and Docker-based interaction.
 
 Live frontend link:
-- https://your-frontend-link.example
+- https://godis.sarthakgoyal.tech

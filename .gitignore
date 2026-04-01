@@ -26,3 +26,7 @@ Thumbs.db
 
 *.aof
 ignore.md
+.venv/
+web-ui/.venv/
+__pycache__/
+*.pyc
