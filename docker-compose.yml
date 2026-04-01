@@ -9,6 +9,11 @@ services:
     volumes:
       - godis-data:/data
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "${GODIS_CPUS:-1.00}"
+          memory: "${GODIS_MEM:-512M}"
 
   godis-ui:
     build:
@@ -23,6 +28,11 @@ services:
     depends_on:
       - godis
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "${GODIS_UI_CPUS:-0.50}"
+          memory: "${GODIS_UI_MEM:-384M}"
 
 volumes:
   godis-data:
