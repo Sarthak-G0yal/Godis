@@ -4,10 +4,10 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"godis/internal/protocol"
+	"godis/internal/storage"
 	"io"
 	"log"
-	"mini-redis/internal/protocol"
-	"mini-redis/internal/storage"
 	"net"
 	"sync"
 )
@@ -52,7 +52,7 @@ func (s *Server) Start() error {
 	s.listener = ln
 	s.mu.Unlock()
 
-	log.Printf("mini-redis listening on %s", s.addr)
+	log.Printf("godis listening on %s", s.addr)
 
 	for {
 		conn, err := ln.Accept()

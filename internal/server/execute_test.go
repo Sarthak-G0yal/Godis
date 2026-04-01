@@ -4,8 +4,8 @@ import (
 	"errors"
 	"testing"
 
-	"mini-redis/internal/protocol"
-	"mini-redis/internal/storage"
+	"godis/internal/protocol"
+	"godis/internal/storage"
 )
 
 type mockAppender struct {
@@ -34,14 +34,14 @@ func TestExecutorPing(t *testing.T) {
 func TestExecutorSetAndGetHit(t *testing.T) {
 	exec := NewExecutor(storage.NewMemoryStorage(), nil)
 
-	setResp := exec.Execute(protocol.Command{Name: protocol.CmdSet, Args: []string{"name", "mini-redis"}})
+	setResp := exec.Execute(protocol.Command{Name: protocol.CmdSet, Args: []string{"name", "godis"}})
 	if setResp != "+OK\r\n" {
 		t.Fatalf("SET response = %q, want %q", setResp, "+OK\\r\\n")
 	}
 
 	getResp := exec.Execute(protocol.Command{Name: protocol.CmdGet, Args: []string{"name"}})
-	if getResp != "$10\r\nmini-redis\r\n" {
-		t.Fatalf("GET hit response = %q, want %q", getResp, "$10\\r\\nmini-redis\\r\\n")
+	if getResp != "$5\r\ngodis\r\n" {
+		t.Fatalf("GET hit response = %q, want %q", getResp, "$5\\r\\ngodis\\r\\n")
 	}
 }
 

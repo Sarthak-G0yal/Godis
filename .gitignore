@@ -23,4 +23,6 @@ go.work.lock
 .vscode/
 .DS_Store
 Thumbs.db
+
 *.aof
+ignore.md

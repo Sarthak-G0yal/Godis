@@ -4,10 +4,10 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"godis/internal/protocol"
+	"godis/internal/storage"
 	"io"
 	"log"
-	"mini-redis/internal/protocol"
-	"mini-redis/internal/storage"
 	"os"
 	"strings"
 	"sync"
@@ -126,97 +126,97 @@ func (a *AOF) Replay(store storage.Storage) error {
 }
 
 func (a *AOF) Close() error {
-    var closeErr error
+	var closeErr error
 
-    a.closeOnce.Do(func() {
-        if a.syncInterval > 0 {
-            close(a.stopCh)
-            <-a.doneCh
-        }
+	a.closeOnce.Do(func() {
+		if a.syncInterval > 0 {
+			close(a.stopCh)
+			<-a.doneCh
+		}
 
-        a.mu.Lock()
-        defer a.mu.Unlock()
+		a.mu.Lock()
+		defer a.mu.Unlock()
 
-        if a.closed {
-            return
-        }
+		if a.closed {
+			return
+		}
 
-        if err := a.syncUnderLock(); err != nil {
-            closeErr = err
-        }
+		if err := a.syncUnderLock(); err != nil {
+			closeErr = err
+		}
 
-        if err := a.file.Close(); err != nil {
-            if closeErr == nil {
-                closeErr = err
-            } else {
-                closeErr = errors.Join(closeErr, err)
-            }
-        }
+		if err := a.file.Close(); err != nil {
+			if closeErr == nil {
+				closeErr = err
+			} else {
+				closeErr = errors.Join(closeErr, err)
+			}
+		}
 
-        a.closed = true
-    })
+		a.closed = true
+	})
 
-    return closeErr
+	return closeErr
 }
 
 func (a *AOF) syncLoop() {
-    ticker := time.NewTicker(a.syncInterval)
-    defer ticker.Stop()
-    defer close(a.doneCh)
+	ticker := time.NewTicker(a.syncInterval)
+	defer ticker.Stop()
+	defer close(a.doneCh)
 
-    for {
-        select {
-        case <-ticker.C:
-            if err := a.sync(); err != nil {
-                log.Printf("aof periodic sync failed: %v", err)
-            }
-        case <-a.stopCh:
-            return
-        }
-    }
+	for {
+		select {
+		case <-ticker.C:
+			if err := a.sync(); err != nil {
+				log.Printf("aof periodic sync failed: %v", err)
+			}
+		case <-a.stopCh:
+			return
+		}
+	}
 }
 
 func (a *AOF) sync() error {
-    a.mu.Lock()
-    defer a.mu.Unlock()
-    return a.syncUnderLock()
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.syncUnderLock()
 }
 
 func (a *AOF) syncUnderLock() error {
-    if a.closed {
-        return nil
-    }
+	if a.closed {
+		return nil
+	}
 
-    if err := a.file.Sync(); err != nil {
-        return fmt.Errorf("sync aof: %w", err)
-    }
+	if err := a.file.Sync(); err != nil {
+		return fmt.Errorf("sync aof: %w", err)
+	}
 
-    if a.syncHook != nil {
-        a.syncHook()
-    }
+	if a.syncHook != nil {
+		a.syncHook()
+	}
 
-    return nil
+	return nil
 }
 
 func formatCommand(cmd protocol.Command) (string, error) {
-    if raw := strings.TrimSpace(cmd.Raw); raw != "" {
-        return raw, nil
-    }
+	if raw := strings.TrimSpace(cmd.Raw); raw != "" {
+		return raw, nil
+	}
 
-    switch cmd.Name {
-    case protocol.CmdSet:
-        if len(cmd.Args) != 2 {
-            return "", fmt.Errorf("invalid SET command args: %d", len(cmd.Args))
-        }
-        return fmt.Sprintf("%s %s %s", protocol.CmdSet, cmd.Args[0], cmd.Args[1]), nil
+	switch cmd.Name {
+	case protocol.CmdSet:
+		if len(cmd.Args) != 2 {
+			return "", fmt.Errorf("invalid SET command args: %d", len(cmd.Args))
+		}
+		return fmt.Sprintf("%s %s %s", protocol.CmdSet, cmd.Args[0], cmd.Args[1]), nil
 
-    case protocol.CmdDel:
-        if len(cmd.Args) != 1 {
-            return "", fmt.Errorf("invalid DEL command args: %d", len(cmd.Args))
-        }
-        return fmt.Sprintf("%s %s", protocol.CmdDel, cmd.Args[0]), nil
+	case protocol.CmdDel:
+		if len(cmd.Args) != 1 {
+			return "", fmt.Errorf("invalid DEL command args: %d", len(cmd.Args))
+		}
+		return fmt.Sprintf("%s %s", protocol.CmdDel, cmd.Args[0]), nil
 
-    default:
-        return "", fmt.Errorf("unsupported command for append: %s", cmd.Name)
-    }
+	default:
+		return "", fmt.Errorf("unsupported command for append: %s", cmd.Name)
+	}
 }

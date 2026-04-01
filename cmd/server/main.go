@@ -2,16 +2,16 @@ package main
 
 import (
 	"context"
+	"godis/internal/persistence"
+	"godis/internal/server"
+	"godis/internal/storage"
 	"log"
-	"mini-redis/internal/persistence"
-	"mini-redis/internal/server"
-	"mini-redis/internal/storage"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"mini-redis/internal/config"
+	"godis/internal/config"
 )
 
 func main() {
@@ -53,7 +53,7 @@ func main() {
 		}
 	}()
 
-	log.Printf("mini-redis boot config: addr=%s aof=%s", cfg.Address, cfg.AOFPath)
+	log.Printf("godis boot config: addr=%s aof=%s", cfg.Address, cfg.AOFPath)
 	if err := srv.Start(); err != nil {
 		log.Fatalf("server stopped with error: %v", err)
 	}

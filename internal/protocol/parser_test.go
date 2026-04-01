@@ -35,15 +35,15 @@ func TestParseLine_Set(t *testing.T) {
 }
 
 func TestParseLine_SetValueWithSpaces(t *testing.T) {
-	cmd, err := ParseLine("SET msg hello mini redis")
+	cmd, err := ParseLine("SET msg hello godis")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if cmd.Args[0] != "msg" {
 		t.Fatalf("key = %q, want %q", cmd.Args[0], "msg")
 	}
-	if cmd.Args[1] != "hello mini redis" {
-		t.Fatalf("value = %q, want %q", cmd.Args[1], "hello mini redis")
+	if cmd.Args[1] != "hello godis" {
+		t.Fatalf("value = %q, want %q", cmd.Args[1], "hello godis")
 	}
 }
 

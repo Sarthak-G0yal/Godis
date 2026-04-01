@@ -9,15 +9,15 @@ import (
 
 func TestMemoryStorageSetGet(t *testing.T) {
 	store := NewMemoryStorage()
-	if err := store.Set("name", "mini-redis"); err != nil {
+	if err := store.Set("name", "godis"); err != nil {
 		t.Fatalf("Set failed: %v", err)
 	}
 	value, err := store.Get("name")
 	if err != nil {
 		t.Fatalf("Get failed: %v", err)
 	}
-	if value != "mini-redis" {
-		t.Fatalf("Expected 'mini-redis', got '%s'", value)
+	if value != "godis" {
+		t.Fatalf("Expected 'godis', got '%s'", value)
 	}
 }
 

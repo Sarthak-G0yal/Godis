@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"mini-redis/internal/protocol"
-	"mini-redis/internal/storage"
+	"godis/internal/protocol"
+	"godis/internal/storage"
 )
 
 func TestAOFAppendWritesOnlyMutatingCommands(t *testing.T) {
@@ -24,7 +24,7 @@ func TestAOFAppendWritesOnlyMutatingCommands(t *testing.T) {
 	if err := aof.Append(protocol.Command{Name: protocol.CmdPing, Raw: "PING"}); err != nil {
 		t.Fatalf("append PING failed: %v", err)
 	}
-	if err := aof.Append(protocol.Command{Name: protocol.CmdSet, Raw: "SET name mini-redis"}); err != nil {
+	if err := aof.Append(protocol.Command{Name: protocol.CmdSet, Raw: "SET name godis"}); err != nil {
 		t.Fatalf("append SET failed: %v", err)
 	}
 	if err := aof.Append(protocol.Command{Name: protocol.CmdDel, Raw: "DEL name"}); err != nil {
@@ -41,7 +41,7 @@ func TestAOFAppendWritesOnlyMutatingCommands(t *testing.T) {
 	}
 
 	got := string(gotBytes)
-	want := "SET name mini-redis\nDEL name\n"
+	want := "SET name godis\nDEL name\n"
 	if got != want {
 		t.Fatalf("aof contents = %q, want %q", got, want)
 	}
@@ -88,7 +88,7 @@ func TestAOFReplayAppliesWritesAndSkipsMalformed(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "appendonly.aof")
 
 	seed := strings.Join([]string{
-		"SET name mini redis",
+		"SET name godis",
 		"PING",
 		"SET feature on",
 		"DEL missing",
@@ -116,8 +116,8 @@ func TestAOFReplayAppliesWritesAndSkipsMalformed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get(name) failed: %v", err)
 	}
-	if got != "mini redis" {
-		t.Fatalf("name = %q, want %q", got, "mini redis")
+	if got != "godis" {
+		t.Fatalf("name = %q, want %q", got, "godis")
 	}
 
 	if store.Exists("feature") {

@@ -3,8 +3,8 @@ package server
 import (
 	"errors"
 	"fmt"
-	"mini-redis/internal/protocol"
-	"mini-redis/internal/storage"
+	"godis/internal/protocol"
+	"godis/internal/storage"
 )
 
 type CommandAppender interface {
