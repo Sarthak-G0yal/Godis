@@ -4,8 +4,8 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: godis
-    ports:
-      - "6379:6379"
+    expose:
+      - "6379"
     volumes:
       - godis-data:/data
     restart: unless-stopped
@@ -14,6 +14,8 @@ services:
         limits:
           cpus: "${GODIS_CPUS:-1.00}"
           memory: "${GODIS_MEM:-512M}"
+    networks:
+      - godis-net
 
   godis-ui:
     build:
@@ -21,7 +23,7 @@ services:
       dockerfile: Dockerfile
     container_name: godis-ui
     ports:
-      - "8501:8501"
+      - "${UI_BIND_HOST:-0.0.0.0}:${UI_PORT:-8501}:8501"
     environment:
       GODIS_HOST: godis
       GODIS_PORT: "6379"
@@ -33,6 +35,12 @@ services:
         limits:
           cpus: "${GODIS_UI_CPUS:-0.50}"
           memory: "${GODIS_UI_MEM:-384M}"
+    networks:
+      - godis-net
 
 volumes:
   godis-data:
+
+networks:
+  godis-net:
+    driver: bridge
