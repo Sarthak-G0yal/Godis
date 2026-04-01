@@ -1,100 +1,91 @@
 # Mini-Redis (Go)
 
-A learning-first Redis-style key-value server in Go.
+A learning-first Redis-style key-value server written in Go.
 
-This project is being built in phases, with clean architecture boundaries between:
-- protocol parsing/formatting
-- command execution/server runtime
-- storage engine
-- persistence
+The codebase is built in phases with clear package boundaries between protocol, server runtime, storage, and persistence.
 
 ## Current Status
 
-- Phase 1: done (project structure + contracts)
+- Phase 1: done (project structure + core interfaces)
 - Phase 2: done (thread-safe in-memory storage)
-- Phase 3: in progress (server + protocol wiring)
-- Phase 4: pending (append-only file persistence)
-- Phase 5: pending (hardening + integration tests)
+- Phase 3: done (TCP server bootstrap + parser + executor + unit tests)
+- Phase 4: next (append-only file persistence)
+- Phase 5: pending (integration tests + hardening)
+
+## Implemented Features
+
+- Command support: `PING`, `SET`, `GET`, `DEL`, `EXISTS`
+- Concurrent client handling (goroutine per connection)
+- In-memory key/value store with `sync.RWMutex`
+- Line-based command parsing and validation
+- Protocol response helpers (`+`, `-ERR`, `:`, `$`, `$-1`)
+- Graceful shutdown on `SIGINT` / `SIGTERM`
+- Unit tests for storage, protocol, and executor behavior
 
 ## Architecture
 
-## 1) Storage Interface (contract-first)
+### 1) Configuration
 
-File: `internal/storage/storage.go`
+File: `internal/config/config.go`
 
-Defined behavior:
+`Config` provides runtime defaults:
+- `Address`: `:6379`
+- `AOFPath`: `appendonly.aof`
+- `AOFSyncInterval`: `1s`
+
+### 2) Storage Contract and In-Memory Implementation
+
+Files:
+- `internal/storage/storage.go`
+- `internal/storage/operation.go`
+
+Storage interface:
 - `Set(key, value string) error`
 - `Get(key string) (string, error)`
 - `Delete(key string) error`
 - `Exists(key string) bool`
 
-Shared storage errors:
+Errors:
 - `ErrKeyNotFound`
 - `ErrEmptyKey`
 
-Why this matters:
-- Server code depends on `Storage` interface, not implementation details.
-- You can plug in additional backends later (disk-backed store, distributed store, etc.).
+`MemoryStorage` uses `map[string]string` protected by `sync.RWMutex`.
 
-## 2) In-Memory Engine + Concurrency
+### 3) Protocol Layer
 
-File: `internal/storage/operation.go`
+Files:
+- `internal/protocol/command.go`
+- `internal/protocol/parser.go`
+- `internal/protocol/response.go`
 
-Implemented type:
-- `MemoryStorage`
+Responsibilities:
+- Parse one line command into `Command{Name, Args, Raw}`
+- Validate command arity
+- Format consistent protocol responses
 
-Data model:
-- `map[string]string`
+### 4) Server Runtime and Command Execution
 
-Concurrency model:
-- guarded by `sync.RWMutex`
-- read operations (`Get`, `Exists`) use `RLock`
-- write operations (`Set`, `Delete`) use `Lock`
+Files:
+- `internal/server/server.go`
+- `internal/server/execute.go`
+- `cmd/server/main.go`
 
-Behavior:
-- empty keys return `ErrEmptyKey`
-- missing keys on `Get`/`Delete` return `ErrKeyNotFound`
+Flow:
+1. `main` builds config, storage, and server.
+2. `Server.Start()` listens on TCP and accepts clients.
+3. Each client connection runs in its own goroutine.
+4. Incoming line is parsed, executed, and response is written back.
+5. Shutdown closes listener, active connections, and waits for goroutines.
 
-## 3) Protocol Command Model
+## Command Behavior (v1)
 
-File: `internal/protocol/command.go`
+- `PING` -> `+PONG\r\n`
+- `SET key value` -> `+OK\r\n`
+- `GET key` -> `$<len>\r\n<value>\r\n` or `$-1\r\n`
+- `DEL key` -> `:1\r\n` if deleted, `:0\r\n` if not found
+- `EXISTS key` -> `:1\r\n` or `:0\r\n`
 
-Supported command names (v1 scope):
-- `PING`
-- `SET`
-- `GET`
-- `DEL`
-- `EXISTS`
-
-`Command` fields:
-- `Name`
-- `Args`
-- `Raw`
-
-Helper:
-- `IsWrite()` returns true for `SET` and `DEL`.
-
-## 4) Runtime Config
-
-File: `internal/config/config.go`
-
-Default values:
-- Address: `:6379`
-- AOF path: `appendonly.aof`
-- AOF sync interval: `1s`
-
-## 5) Process Entry Point
-
-File: `cmd/server/main.go`
-
-Current behavior:
-- loads default config
-- logs boot configuration
-
-Note:
-- full TCP server wiring is part of Phase 3 (next steps below).
-
-## Directory Layout
+## Project Layout
 
 ```text
 .
@@ -104,65 +95,25 @@ Note:
 ├── internal/
 │   ├── config/
 │   │   └── config.go
-│   ├── persistence/        # planned for Phase 4
+│   ├── persistence/            # Phase 4 target
 │   ├── protocol/
 │   │   ├── command.go
-│   │   ├── parser.go       # placeholder, Phase 3 target
-│   │   ├── response.go     # placeholder, Phase 3 target
-│   │   └── tests/
-│   │       ├── parser_test.go
-│   │       └── response_test.go
-│   ├── server/             # Phase 3 target
+│   │   ├── parser.go
+│   │   ├── parser_test.go
+│   │   ├── response.go
+│   │   └── response_test.go
+│   ├── server/
+│   │   ├── execute.go
+│   │   ├── execute_test.go
+│   │   └── server.go
 │   └── storage/
 │       ├── operation.go
-│       ├── storage.go
-│       └── tests/
-│           └── operation_test.go
+│       ├── operation_test.go
+│       └── storage.go
 └── go.mod
 ```
 
-## Roadmap
-
-## Phase 3 (Now)
-
-Goal: add a working TCP command server.
-
-Planned additions:
-- parser implementation in `internal/protocol/parser.go`
-- response formatting helpers in `internal/protocol/response.go`
-- server runtime in `internal/server/server.go`
-- command executor in `internal/server/execute.go`
-- wiring + graceful shutdown in `cmd/server/main.go`
-
-Execution flow:
-1. accept TCP connection
-2. read command line
-3. parse into `protocol.Command`
-4. execute via `storage.Storage`
-5. write protocol response
-
-## Phase 4
-
-Goal: durability with append-only file (AOF).
-
-Planned additions:
-- `internal/persistence/aof.go`
-- append mutating commands (`SET`, `DEL`)
-- periodic `Sync()` using config interval
-- startup replay before accepting clients
-
-## Phase 5
-
-Goal: hardening and confidence.
-
-Planned work:
-- parser tests (valid + invalid command/arity)
-- executor tests for all v1 commands
-- persistence replay tests
-- integration tests with concurrent clients
-- race gate + full test gate
-
-## How to Run (current)
+## Run and Test
 
 From project root:
 
@@ -172,19 +123,31 @@ go test -race ./...
 go run ./cmd/server
 ```
 
-Expected right now:
-- tests should pass for implemented packages
-- server binary currently logs startup config only
+Quick manual check with netcat (in another terminal while server is running):
 
-## Immediate TODO (high priority)
+```bash
+nc localhost 6379
+PING
+SET lang go
+GET lang
+EXISTS lang
+DEL lang
+GET lang
+```
 
-1. Implement `internal/protocol/parser.go`.
-2. Implement `internal/protocol/response.go`.
-3. Add protocol tests under `internal/protocol/tests/`.
-4. Build server runtime and execution path.
+## Phase 4 Plan (Next)
+
+Goal: persist writes and recover state on restart.
+
+Planned in `internal/persistence/aof.go`:
+- Open append-only file (`appendonly.aof`)
+- Append successful mutating commands (`SET`, `DEL`)
+- Periodically `Sync()` based on `AOFSyncInterval`
+- Replay file on startup before accepting client traffic
+- Ensure replay does not re-append commands
 
 ## Notes
 
-- This repo currently uses a simple text protocol plan for v1, not full RESP2.
-- Keep interfaces stable while features evolve; avoid coupling transport and storage layers.
-- Type/file naming can be cleaned later (`operation.go` -> `memory.go`) in a dedicated refactor step.
+- This is intentionally a simple text protocol implementation for learning.
+- RESP2 compatibility, snapshots, and replication are future extensions.
+- A small naming cleanup (`operation.go` -> `memory.go`) can be done later in a dedicated refactor.
