@@ -2,14 +2,13 @@ package storage
 
 import (
 	"errors"
-	"mini-redis/internal/storage/"
 	"strconv"
 	"sync"
 	"testing"
 )
 
 func TestMemoryStorageSetGet(t *testing.T) {
-	store := storage.NewMemoryStorage()
+	store := NewMemoryStorage()
 	if err := store.Set("name", "mini-redis"); err != nil {
 		t.Fatalf("Set failed: %v", err)
 	}
@@ -23,15 +22,15 @@ func TestMemoryStorageSetGet(t *testing.T) {
 }
 
 func TestMemoryStorageGetNotFound(t *testing.T) {
-	store := storage.NewMemoryStorage()
+	store := NewMemoryStorage()
 	_, err := store.Get("nonexistent")
-	if !errors.Is(err, storage.ErrKeyNotFound) {
+	if !errors.Is(err, ErrKeyNotFound) {
 		t.Fatalf("Expected ErrKeyNotFound, got %v", err)
 	}
 }
 
 func TestMemoryStorageDelete(t *testing.T) {
-	store := storage.NewMemoryStorage()
+	store := NewMemoryStorage()
 	if err := store.Set("key", "value"); err != nil {
 		t.Fatalf("Set failed: %v", err)
 	}
@@ -44,14 +43,14 @@ func TestMemoryStorageDelete(t *testing.T) {
 }
 
 func TestMemoryStorageEmptyKey(t *testing.T) {
-	store := storage.NewMemoryStorage()
-	if err := store.Set("", "value"); !errors.Is(err, storage.ErrEmptyKey) {
+	store := NewMemoryStorage()
+	if err := store.Set("", "value"); !errors.Is(err, ErrEmptyKey) {
 		t.Fatalf("Expected ErrEmptyKey, got %v", err)
 	}
-	if _, err := store.Get(""); !errors.Is(err, storage.ErrEmptyKey) {
+	if _, err := store.Get(""); !errors.Is(err, ErrEmptyKey) {
 		t.Fatalf("Expected ErrEmptyKey, got %v", err)
 	}
-	if err := store.Delete(""); !errors.Is(err, storage.ErrEmptyKey) {
+	if err := store.Delete(""); !errors.Is(err, ErrEmptyKey) {
 		t.Fatalf("Expected ErrEmptyKey, got %v", err)
 	}
 	if store.Exists("") {
@@ -59,7 +58,7 @@ func TestMemoryStorageEmptyKey(t *testing.T) {
 	}
 }
 func TestMemoryStoreConcurrentAccess(t *testing.T) {
-	store := storage.NewMemoryStorage()
+	store := NewMemoryStorage()
 	const writers = 100
 	const readers = 100
 
